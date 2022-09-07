@@ -1,0 +1,4 @@
+1. Does not need batch-size in the Keras model. 'None' works
+2. must have TF 2.7.
+3. use mikhail's ID_LIBRARY_PATH
+4. uses pyenv (not tested with conda)
