@@ -2,7 +2,7 @@ import keras
 import tensorflow as tf
 from keras.preprocessing.image import ImageDataGenerator
 import os
-from new_rn18 import ResnetBuilder
+from rn18_model import ResnetBuilder
 import numpy as np
 import logging
 
