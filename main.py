@@ -24,6 +24,24 @@ logger.setLevel(logging.INFO)
 logger.info(
    f'TF version:{tf.__version__}, cuda version:{tf.sysconfig.get_build_info()["cuda_version"]}')
 
+def setup_recipe(model):
+   """
+   Should run the first convolution using im2col method, instead of kn2row.
+   """
+   first_conv_layer_name = None
+   for layer in model.layers:
+      if isinstance(layer, tf.keras.layers.Conv2D):
+          first_conv_layer_name = layer.name
+          break
+   else:  # no break
+      raise RuntimeError('cannot determine first conv layer name')
+
+   recipe = IdiomRecipe(layer_names=[first_conv_layer_name])
+   recipe.update_capability(
+      first_conv_layer_name, 'conv_algorithm', None, 'im2col'
+   )
+   return recipe
+
 
 def eval(model, data_loader, device):
     print("Running evaluation.")
@@ -110,7 +128,6 @@ def main(
     target_size = (320, 320)
     channels = (3,)
     nb_classes = 10
-    eval_batch_size = 16
 
     image_gen = ImageDataGenerator(featurewise_center=True,
                                   featurewise_std_normalization=True)
@@ -144,53 +161,14 @@ def main(
                   optimizer=sgd_optimizer,
                   metrics=['accuracy'])
 
-    logger.info(f'Show the out-of-the-box accuracy')
-    _, _ = imported_model.evaluate(val_gen)
+    if do_oob_eval:
+        logger.info(f'Show the out-of-the-box accuracy')
+        _, _ = imported_model.evaluate(val_gen)
 
-    # -----
-    
-    tune_batch_size = tune_batch_size if do_tune else None
-
-    data_loaders = get_dataloaders(
-        data_dir,
-        train_batch_size,
-        eval_batch_size,
-        num_workers,
-    )
-
-    num_classes = 10 if is_imagewoof else 1000
-    pretrained = checkpoint_path is None
-    if resnet_size == 18:
-        model = models.resnet18(pretrained=pretrained, num_classes=num_classes)
-    else:
-        model = models.resnet50(pretrained=pretrained, num_classes=num_classes)
-
-    if checkpoint_path:
-        model.load_state_dict(torch.load(checkpoint_path))
-
-    model.to(device)
-
-    if finetune_with_dft:
-        inputs_dnf, _ = next(iter(data_loaders.train_loader))
-        inputs_dnf = inputs_dnf.to(device)
-        setup_for_tuning(model, inputs=inputs_dnf)
-
-    if finetune_with_ept:
-        setup_for_tuning(model, finetuning_method="envise_precision_training")
-
-    if do_tune:
-        fine_fune(
-            model,
-            data_loaders.train_loader,
-            data_loaders.val_loader,
-            epochs,
-            lr,
-        )
 
     if do_envise_eval:
         setup_for_evaluation(model)
-
-    eval(model, data_loaders.val_loader, device)
+        eval(model, data_loaders.val_loader, device)
 
 
 if __name__ == "__main__":
