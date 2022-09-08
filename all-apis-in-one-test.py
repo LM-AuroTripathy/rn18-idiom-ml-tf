@@ -20,7 +20,12 @@ logger.setLevel(logging.INFO)
 logger.info(
    f'TF version:{tf.__version__}, cuda version:{tf.sysconfig.get_build_info()["cuda_version"]}')
 
-val_folder = '/home/auro/pyt-rn18-notebook/imagewoof2-320/val/'
+data_root_path = '/models/home/auro/pyt-rn18-notebook/' 
+model_root_path = '/models/home/auro/bk-idiom-ml-tf/rn18/'
+# data_root_path = '/home/auro/pyt-rn18-notebook/' 
+# model_root_path = '/home/auro/bk-idiom-ml-tf/rn18/'
+
+val_folder = os.path.join(data_root_path, 'imagewoof2-320/val/')
 target_size = (320, 320)
 channels = (3,)
 nb_classes = 10
@@ -38,7 +43,6 @@ val_gen = image_gen.flow_from_directory(val_folder, class_mode="categorical",
 
 imported_model = ResnetBuilder.build_resnet_18(target_size + channels, 10)
 
-model_root_path = '/home/auro/idiom-ml-tf/rn18/'
 model_path = os.path.join(model_root_path, 'checkpoint', 'rn18-best-epoch-43-acc-0.7.hdf5')
 if os.path.exists(model_path):
    print(f'loading file:{model_path}')
@@ -128,7 +132,7 @@ tuned_model.compile(loss='categorical_crossentropy',
 epochs = 1
 callbacks = []
 train_batch_size = 16
-train_folder = '/home/auro/pyt-rn18-notebook/imagewoof2-320/train'
+train_folder = os.path.join(data_root_path, 'imagewoof2-320/train')
 train_gen = image_gen.flow_from_directory(train_folder, class_mode="categorical",
                                    shuffle=True, batch_size=train_batch_size,
                                    target_size=target_size)
