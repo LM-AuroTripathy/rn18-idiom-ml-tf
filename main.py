@@ -111,7 +111,7 @@ def finetune(
 
 
 def main(
-    checkpoint_path,
+    model_path,
     data_dir,
     tune_batch_size,
     eval_batch_size,
@@ -141,7 +141,6 @@ def main(
 
     imported_model = ResnetBuilder.build_resnet_18(target_size + channels, 10)
 
-    model_path = checkpoint_path
     if os.path.exists(model_path):
        print(f'loading file:{model_path}')
        load_status = imported_model.load_weights(model_path)
@@ -184,7 +183,6 @@ def main(
     if do_tune:
        # reload model and apply fine-tuning
        imported_model = ResnetBuilder.build_resnet_18(target_size + channels, 10)
-       model_path = checkpoint_path
        if os.path.exists(model_path):
           print(f'loading file:{model_path}')
           load_status = imported_model.load_weights(model_path)
@@ -203,7 +201,7 @@ def main(
        logger.info('Done setting up for fine-tuning. Starting fine-tuning...')
 
        sgd_optimizer = tf.keras.optimizers.SGD(
-           learning_rate=0.00001,  # carefully pick the lr as you are fine-tuning
+           learning_rate=lr,  # carefully pick the lr as you are fine-tuning
            momentum=0.9,
            nesterov=False,
            name='SGD',
