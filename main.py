@@ -6,7 +6,7 @@ import keras
 import tensorflow as tf
 from keras.preprocessing.image import ImageDataGenerator
 import os
-from new_rn18 import ResnetBuilder
+from rn18_model import ResnetBuilder
 import numpy as np
 import logging
 
@@ -167,8 +167,19 @@ def main(
 
 
     if do_envise_eval:
-        setup_for_evaluation(model)
-        eval(model, data_loaders.val_loader, device)
+       recipe = setup_recipe(imported_model)
+
+       #setup for envise eval
+       quant_model = setup_for_evaluation(imported_model,
+                                          finetuning_method="dft",
+                                          recipe=recipe)
+       
+       quant_model.compile(loss='categorical_crossentropy',
+                           optimizer=sgd_optimizer,
+                           metrics=['accuracy'])
+       
+       logger.info(f'Show Envise eval  accuracy')
+       _, _ = quant_model.evaluate(val_gen)
 
 
 if __name__ == "__main__":
