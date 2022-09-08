@@ -1,6 +1,6 @@
 1. Does not need batch-size in the Keras model. 'None' works
 2. must have TF 2.7.
-3. use mikhail's ID_LIBRARY_PATH
+3. use mikhail's path in LD_LIBRARY_PATH
 4. uses pyenv (not tested with conda)
 5. location: (pyenv-idiom-ml-tf) auro@nomster:~/idiom-ml-tf2/idiom-ml-tf/examples/rn18/inference
 6. invovation: srun --gpus 1 python examples/rn18/inference/all-apis-in-one-test.py
