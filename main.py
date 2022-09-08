@@ -181,7 +181,54 @@ def main(
        logger.info(f'Show Envise eval  accuracy')
        _, _ = quant_model.evaluate(val_gen)
 
+    if do_tune:
+       # reload model and apply fine-tuning
+       imported_model = ResnetBuilder.build_resnet_18(target_size + channels, 10)
+       model_path = checkpoint_path
+       if os.path.exists(model_path):
+          print(f'loading file:{model_path}')
+          load_status = imported_model.load_weights(model_path)
+       else:
+          print(f'file {model_path} does not exist.')
+          exit(1)
 
+       strategy = tf.distribute.get_strategy()
+       recipe = IdiomRecipe()
+       tuned_model = setup_for_tuning(imported_model,
+                                      finetuning_method="dft",
+                                      strategy=strategy,
+                                      inputs=val_gen,
+                                      recipe=recipe)
+
+       logger.info('Done setting up for fine-tuning. Starting fine-tuning...')
+
+       sgd_optimizer = tf.keras.optimizers.SGD(
+           learning_rate=0.00001,  # carefully pick the lr as you are fine-tuning
+           momentum=0.9,
+           nesterov=False,
+           name='SGD',
+       )
+       tuned_model.compile(loss='categorical_crossentropy',
+                     optimizer=sgd_optimizer,
+                     metrics=['accuracy'])
+       epochs = 1
+       callbacks = []
+       train_batch_size = 16
+       train_folder = os.path.join(data_dir, 'train')
+       train_gen = image_gen.flow_from_directory(train_folder, class_mode="categorical",
+                                          shuffle=True, batch_size=train_batch_size,
+                                          target_size=target_size)
+
+       _ = tuned_model.fit(train_gen,
+                          batch_size=train_batch_size,
+                          epochs=epochs,
+                          verbose=1,
+                          callbacks=callbacks,
+                          use_multiprocessing=False,)
+       logger.info(f'Evaluating on validation data...')
+       _, _  = tuned_model.evaluate(val_gen)
+
+       
 if __name__ == "__main__":
     parser = get_parser()
     args = parser.parse_args()
