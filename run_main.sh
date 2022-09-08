@@ -17,7 +17,7 @@ python main.py \
        --data-dir /models/home/auro/pyt-rn18-notebook/imagewoof2-320 \
        --checkpoint-path /models/home/auro/bk-idiom-ml-tf/rn18/checkpoint/rn18-best-epoch-43-acc-0.7.hdf5 \
        --do-tune \
-       --lr 1e-3 \
+       --lr 1e-5 \
        --epochs 1 \
        --tune-batch-size 16
 
