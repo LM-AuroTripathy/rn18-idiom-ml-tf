@@ -42,74 +42,6 @@ def setup_recipe(model):
    )
    return recipe
 
-
-def eval(model, data_loader, device):
-    print("Running evaluation.")
-    model.eval()
-    loss = 0
-    correct = 0
-    loss_fn = torch.nn.CrossEntropyLoss(reduction="sum")
-    start = time.time()
-    with torch.no_grad():
-        for data, target in tqdm(data_loader):
-            data, target = data.to(device), target.to(device)
-            output = model(data)
-            loss += loss_fn(output, target).item()
-            pred = output.argmax(dim=1, keepdim=True)
-            correct += pred.eq(target.view_as(pred)).sum().item()
-
-    elapsed = int(time.time() - start)
-    loss /= len(data_loader.dataset)
-    accuracy = 100.0 * correct / len(data_loader.dataset)
-
-    print(
-        "\n" + f"loss:          {loss:.03f}" + "\n"
-        f"accuracy:      {accuracy:.01f}" + "\n"
-        f"elapsed time:  {elapsed:d} sec." + "\n"
-    )
-    print("Evaluation complete.")
-
-
-def finetune(
-    model,
-    train_loader,
-    val_loader,
-    epochs,
-    lr,
-):
-    print(f"Training for {epochs} epochs.")
-    criterion = torch.nn.CrossEntropyLoss().to(device)
-    if use_adamw:
-        optimizer = optim.AdamW(model.parameters(), lr=lr)
-    else:
-        optimizer = optim.SGD(
-            model.parameters(), lr=lr, momentum=0.9, weight_decay=1e-4
-        )
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(
-        optimizer, step_size=1, gamma=0.3
-    )
-
-    for epoch in range(epochs):
-        print(f"Training epoch: {epoch}")
-        model.train()
-        for data, target in tqdm(train_loader):
-            inputs, labels = data.to(device), target.to(device)
-
-            optimizer.zero_grad()
-            outputs = model(inputs)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
-
-        lr_scheduler.step()
-
-        if not skip_train_eval:
-            model.eval()
-            eval(model, val_loader, device)
-
-    print("Training complete.")
-
-
 def main(
     model_path,
     data_dir,
@@ -125,6 +57,7 @@ def main(
 ):
 
     val_folder = os.path.join(data_dir, 'val')
+    train_folder = os.path.join(data_dir, 'train')
     target_size = (320, 320)
     channels = (3,)
     nb_classes = 10
@@ -138,8 +71,13 @@ def main(
     val_gen = image_gen.flow_from_directory(val_folder, class_mode="categorical",
                                        shuffle=False, batch_size=eval_batch_size,
                                        target_size=target_size)
+    
+    train_gen = image_gen.flow_from_directory(train_folder, class_mode="categorical",
+                                          shuffle=True, batch_size=tune_batch_size,
+                                          target_size=target_size)
 
-    imported_model = ResnetBuilder.build_resnet_18(target_size + channels, 10)
+    imported_model = ResnetBuilder.build_resnet_18(target_size + channels,
+                                                   nb_classes)
 
     if os.path.exists(model_path):
        print(f'loading file:{model_path}')
@@ -148,7 +86,7 @@ def main(
        print(f'file {model_path} does not exist.')
        exit(1)
 
-    imported_model.summary()
+    # imported_model.summary()
 
     sgd_optimizer = tf.keras.optimizers.SGD(
         learning_rate=0.,
@@ -182,7 +120,8 @@ def main(
 
     if do_tune:
        # reload model and apply fine-tuning
-       imported_model = ResnetBuilder.build_resnet_18(target_size + channels, 10)
+       imported_model = ResnetBuilder.build_resnet_18(target_size + channels,
+                                                      nb_classes)
        if os.path.exists(model_path):
           print(f'loading file:{model_path}')
           load_status = imported_model.load_weights(model_path)
@@ -211,14 +150,8 @@ def main(
                      metrics=['accuracy'])
        epochs = 1
        callbacks = []
-       train_batch_size = 16
-       train_folder = os.path.join(data_dir, 'train')
-       train_gen = image_gen.flow_from_directory(train_folder, class_mode="categorical",
-                                          shuffle=True, batch_size=train_batch_size,
-                                          target_size=target_size)
-
        _ = tuned_model.fit(train_gen,
-                          batch_size=train_batch_size,
+                          batch_size=tune_batch_size,
                           epochs=epochs,
                           verbose=1,
                           callbacks=callbacks,
