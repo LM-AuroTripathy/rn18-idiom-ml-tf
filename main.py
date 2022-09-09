@@ -86,8 +86,6 @@ def main(
        print(f'file {model_path} does not exist.')
        exit(1)
 
-    # imported_model.summary()
-
     sgd_optimizer = tf.keras.optimizers.SGD(
         learning_rate=0.,
         momentum=0.9,
@@ -105,7 +103,8 @@ def main(
 
     if do_envise_eval:
        recipe = setup_recipe(imported_model)
-
+       tf.random.set_seed(0)
+       
        #setup for envise eval
        quant_model = setup_for_evaluation(imported_model,
                                           finetuning_method="dft",
@@ -115,7 +114,7 @@ def main(
                            optimizer=sgd_optimizer,
                            metrics=['accuracy'])
        
-       logger.info(f'Show Envise eval  accuracy')
+       logger.info(f'Show Envise eval accuracy')
        _, _ = quant_model.evaluate(val_gen)
 
     if do_tune:
