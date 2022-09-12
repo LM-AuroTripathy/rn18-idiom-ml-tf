@@ -7,6 +7,7 @@ import tensorflow as tf
 from keras.preprocessing.image import ImageDataGenerator
 import os
 from rn18_model import ResnetBuilder
+import tf2onnx
 import numpy as np
 import logging
 
@@ -41,6 +42,18 @@ def setup_recipe(model):
       first_conv_layer_name, 'conv_algorithm', None, 'im2col'
    )
    return recipe
+
+def convert_2_onnx(model):
+   """ convert the model to onnx and write it at output path"""
+   
+   spec = (tf.TensorSpec((None, 320, 320, 3), tf.float32, name="input"),)
+   output_path = model.name + ".onnx"
+   
+   model_proto, _ = tf2onnx.convert.from_keras(model, input_signature=spec, output_path=output_path)
+   output_names = [n.name for n in model_proto.graph.output]
+   input_names = [n.name for n in model_proto.graph.input]
+   print(f'output names:{output_names}')
+   print(f'input names:{input_names}')
 
 def main(
     model_path,
@@ -157,6 +170,10 @@ def main(
                           use_multiprocessing=False,)
        logger.info(f'Evaluating on validation data...')
        _, _  = tuned_model.evaluate(val_gen)
+
+       logger.info("Export model to onnx and save...")
+       onnx_model = setup_for_export(tuned_model)
+       convert_2_onnx(onnx_model)
 
        
 if __name__ == "__main__":
