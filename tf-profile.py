@@ -19,7 +19,7 @@ train_folder = os.path.join(data_dir, 'train')
 target_size = (320, 320)
 channels = (3,)
 nb_classes = 10
-eval_batch_size = 16
+eval_batch_size = 1
 
 image_gen = ImageDataGenerator(featurewise_center=True,
                                featurewise_std_normalization=True)
@@ -32,14 +32,10 @@ val_gen = image_gen.flow_from_directory(val_folder, class_mode="categorical",
                                         target_size=target_size)
 x_batch, y_batch = next(val_gen)
 print(f'x shape: {x_batch.shape} y shape: {y_batch.shape}')
-# data = [{'input': x} for x in itertools.islice(x_batch, eval_batch_size)]
-data = [{'input': np.expand_dims(x, axis=0)} for x in itertools.islice(x_batch, eval_batch_size)]
-data = [{'input': [np.expand_dims(x, axis=0) for x in itertools.islice(x_batch, eval_batch_size)]}]
+data = [{'input': np.expand_dims(x, axis=0) for x in itertools.islice(x_batch, eval_batch_size)}]
+# data = [{'input': np.repeat(np.expand_dims(x, axis=0), 16, axis=0) for x in itertools.islice(x_batch, eval_batch_size)}]
 
 
 print(data)
-
-for x in itertools.islice(x_batch, 1):
-    print(x.shape)
 
 profile(compiled_model_dir, data, detailed_report=True)
